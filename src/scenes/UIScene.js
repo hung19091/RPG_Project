@@ -24,7 +24,7 @@ export default class UIScene extends Phaser.Scene {
 
         this.dlgMarginX = 20;
         this.dlgMarginBottom = 20;
-        this.dlgHeight = 140;
+        this.dlgHeight = 180;  // 增加高度以容納換行文字
         this.dlgMinWidth = 280;
 
         // ── PlayerHud ───────────────────────────────────────────
@@ -78,15 +78,17 @@ export default class UIScene extends Phaser.Scene {
             .setOrigin(0, 0);
 
         this.dlgName = this.add.text(96, 14, "", {
-            fontSize: "22px",
+            fontFamily: "Arial, sans-serif",
+            fontSize: "24px",
             color: "#ffffff",
             fontStyle: "bold",
             padding: { top: 4, bottom: 4 },
         });
 
         const initialWrapW = Math.max(60, boxW - 108);
-        this.dlgBody = this.add.text(96, 52, "", {
-            fontSize: "20px",
+        this.dlgBody = this.add.text(96, 48, "", {
+            fontFamily: "Arial, sans-serif",
+            fontSize: "18px",
             color: "#f5f5f5",
             wordWrap: { width: initialWrapW, useAdvancedWrap: true },
             padding: { top: 4, bottom: 4 },
@@ -105,7 +107,8 @@ export default class UIScene extends Phaser.Scene {
     _createPlayerHud() {
         this.hpText = this.add
             .text(this.hudMarginX, this.hudTextY, "HP: 100/100", {
-                fontSize: "20px",
+                fontFamily: "Arial, sans-serif",
+                fontSize: "24px",
                 color: "#ffffff",
                 fontStyle: "bold",
             })
