@@ -92,6 +92,7 @@ export default class UIScene extends Phaser.Scene {
             color: "#f5f5f5",
             wordWrap: { width: initialWrapW, useAdvancedWrap: true },
             padding: { top: 4, bottom: 4 },
+            resolution: window.devicePixelRatio || 2,  // 字體銳利
         });
 
         this.dlgContainer = this.add.container(this.dlgMarginX, boxY, [
