@@ -14,8 +14,11 @@ export default class BaseScene extends Phaser.Scene {
             slimeCount: 3,
             usePlayerSprite: true,
             useNpcSprite: false,
+            cameraZoom: 2,
             ...sceneOptions,
         };
+
+        this.cameraZoom = this.sceneOptions.cameraZoom;
 
         this.mapWidth = 2000;
         this.mapHeight = 2000;
@@ -76,6 +79,11 @@ export default class BaseScene extends Phaser.Scene {
         this.createInput();
         this.createCamera();
         this.createSlimeMovementTimer();
+
+        this.scale.on("resize", this.onResize, this);
+        this.events.once("shutdown", this.handleSceneShutdown, this);
+        this.events.once("destroy", this.handleSceneShutdown, this);
+        this.onResize(this.scale.gameSize);
     }
 
     createBackground() {
@@ -294,7 +302,18 @@ export default class BaseScene extends Phaser.Scene {
 
     createCamera() {
         this.cameras.main.setBounds(0, 0, this.mapWidth, this.mapHeight);
+        this.cameras.main.setZoom(this.cameraZoom);
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+    }
+
+    onResize(gameSize) {
+        this.cameras.main.setSize(gameSize.width, gameSize.height);
+        this.cameras.main.setZoom(this.cameraZoom);
+        this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+    }
+
+    handleSceneShutdown() {
+        this.scale.off("resize", this.onResize, this);
     }
 
     createPlayerHud() {
