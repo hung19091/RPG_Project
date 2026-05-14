@@ -78,53 +78,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         return this.facing;
     }
 
-    playIdle() {
-        if (!this.hasAnimations) {
-            return;
-        }
-
-        this.anims.play(`${this.animationPrefix}-idle-${this.facing}`, true);
-    }
-
-    playWalk(direction) {
-        if (!this.hasAnimations) {
-            return;
-        }
-
-        this.anims.play(`${this.animationPrefix}-walk-${direction}`, true);
-    }
-
-    update(controls = {}) {
-        if (!this.active) {
-            return;
-        }
-
-        if (!this.movementEnabled) {
-            this.body.setVelocity(0, 0);
-            this.playIdle();
-            return;
-        }
-
-        let velocityX = 0;
-        let velocityY = 0;
-
-        const leftPressed = Boolean(controls.left?.isDown);
-        const rightPressed = Boolean(controls.right?.isDown);
-        const upPressed = Boolean(controls.up?.isDown);
-        const downPressed = Boolean(controls.down?.isDown);
-
-        if (leftPressed) {
-            velocityX = -this.moveSpeed;
-        } else if (rightPressed) {
-            velocityX = this.moveSpeed;
-        }
-
-        if (upPressed) {
-            velocityY = -this.moveSpeed;
-        } else if (downPressed) {
-            velocityY = this.moveSpeed;
-        }
-
+    setVelocityWithAnimation(velocityX, velocityY) {
         this.body.setVelocity(velocityX, velocityY);
 
         if (velocityX !== 0 && velocityY !== 0) {
@@ -146,5 +100,73 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
         } else {
             this.playIdle();
         }
+    }
+
+    stopMovement() {
+        this.setVelocityWithAnimation(0, 0);
+    }
+
+    moveToward(targetX, targetY, stopDistance = 10) {
+        if (!this.active || !this.movementEnabled) {
+            this.stopMovement();
+            return;
+        }
+
+        const distance = Phaser.Math.Distance.Between(this.x, this.y, targetX, targetY);
+        if (distance < stopDistance) {
+            this.stopMovement();
+            return;
+        }
+
+        const angle = Phaser.Math.Angle.Between(this.x, this.y, targetX, targetY);
+        const velocityX = Math.cos(angle) * this.moveSpeed;
+        const velocityY = Math.sin(angle) * this.moveSpeed;
+
+        this.setVelocityWithAnimation(velocityX, velocityY);
+    }
+
+    playIdle() {
+        if (!this.hasAnimations) {
+            return;
+        }
+
+        this.anims.play(`${this.animationPrefix}-idle-${this.facing}`, true);
+    }
+
+    playWalk(direction) {
+        if (!this.hasAnimations) {
+            return;
+        }
+
+        this.anims.play(`${this.animationPrefix}-walk-${direction}`, true);
+    }
+
+    update(cursors) {
+        if (!this.active) {
+            return;
+        }
+
+        if (!this.movementEnabled) {
+            this.body.setVelocity(0, 0);
+            this.playIdle();
+            return;
+        }
+
+        let velocityX = 0;
+        let velocityY = 0;
+
+        if (cursors.left.isDown) {
+            velocityX = -this.moveSpeed;
+        } else if (cursors.right.isDown) {
+            velocityX = this.moveSpeed;
+        }
+
+        if (cursors.up.isDown) {
+            velocityY = -this.moveSpeed;
+        } else if (cursors.down.isDown) {
+            velocityY = this.moveSpeed;
+        }
+
+        this.setVelocityWithAnimation(velocityX, velocityY);
     }
 }

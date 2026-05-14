@@ -89,31 +89,7 @@
 
 ---
 
-## 6) 手機觸控操作（移動 / 攻擊 / 對話）
-
-### 主要修改點
-- 觸控控制器：src/ui/TouchControls.js
-- 輸入整合：src/scenes/BaseScene.js
-- 鍵盤輸入延伸：src/entities/Player.js
-
-### 目前功能
-- 左下角方向鍵：移動
-- 右下角 ATK：攻擊
-- 右下角 TALK：對話 / 進下一句 / 離開後切換場景
-
-### 若要新增按鈕
-1. 在 `src/ui/TouchControls.js` 加新的 action 按鈕
-2. 在 `BaseScene.update()` 裡讀取 `consumeAction()`
-3. 若是移動類按鈕，加入 `moveState`
-
-### 若要調整按鈕位置
-- 修改 `src/ui/TouchControls.js` 內的座標常數：
-   - `dpadBaseX`, `dpadBaseY`
-   - `actionBaseX`, `actionBaseY`
-
----
-
-## 7) 快速檢查清單（改完必看）
+## 6) 快速檢查清單（改完必看）
 
 1. 角色是否可正常移動與播放對應方向動畫
 2. 與 NPC 對話是否能正常開啟/推進/關閉

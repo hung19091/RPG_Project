@@ -2,7 +2,6 @@ import Phaser from "../phaser.js";
 import Player from "../entities/Player.js";
 import Npc from "../entities/Npc.js";
 import DialogueUI from "../ui/DialogueUI.js";
-import TouchControls from "../ui/TouchControls.js";
 
 export default class BaseScene extends Phaser.Scene {
     constructor(sceneKey, sceneOptions = {}) {
@@ -47,8 +46,12 @@ export default class BaseScene extends Phaser.Scene {
         this.cursors = null;
         this.spaceKey = null;
         this.attackKey = null;
-        this.touchControls = null;
-        this.isTouchDevice = false;
+
+        this.activeMovePointer = null;
+        this.pointerDownTimestamp = 0;
+        this.pointerDownOnNpc = false;
+        this.tapAttackThresholdMs = 200;
+        this.touchStopDistance = 10;
     }
 
     preload() {
@@ -71,7 +74,6 @@ export default class BaseScene extends Phaser.Scene {
         this.createPlayerHud();
         this.createSlimePack();
         this.createInput();
-        this.createTouchControls();
         this.createCamera();
         this.createSlimeMovementTimer();
     }
@@ -156,6 +158,9 @@ export default class BaseScene extends Phaser.Scene {
         });
 
         this.physics.add.collider(this.player, this.npc);
+
+        this.npc.setInteractive({ useHandCursor: true });
+        this.npc.on("pointerdown", this.handleNpcPointerDown, this);
     }
 
     createDialogueUI() {
@@ -173,19 +178,118 @@ export default class BaseScene extends Phaser.Scene {
         this.cursors = this.input.keyboard.createCursorKeys();
         this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
         this.attackKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
+
+        this.input.on("pointerdown", this.handlePointerDown, this);
+        this.input.on("pointermove", this.handlePointerMove, this);
+        this.input.on("pointerup", this.handlePointerUp, this);
     }
 
-    detectTouchDevice() {
-        return Boolean(
-            this.sys.game.device.input.touch ||
-            (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0)
-        );
+    isPlayerNearNpc(maxDistance = 60) {
+        return Phaser.Math.Distance.Between(this.player.x, this.player.y, this.npc.x, this.npc.y) < maxDistance;
     }
 
-    createTouchControls() {
-        this.isTouchDevice = this.detectTouchDevice();
-        this.touchControls = new TouchControls(this);
-        this.touchControls.setVisible(this.isTouchDevice);
+    tryOpenDialogue() {
+        if (this.dialogueUI.isOpen()) {
+            return true;
+        }
+
+        if (this.isPlayerNearNpc(60) && this.dialogueUI.open()) {
+            this.player.setMovementEnabled(false);
+            this.player.stopMovement();
+            return true;
+        }
+
+        return false;
+    }
+
+    performAttackIfReady() {
+        if (this.time.now < this.nextAttackTime) {
+            return;
+        }
+
+        this.nextAttackTime = this.time.now + this.attackCooldown;
+        this.createAttackHitbox();
+    }
+
+    isPointerOnNpc(pointer) {
+        if (!this.npc || !this.npc.active) {
+            return false;
+        }
+
+        const bounds = this.npc.getBounds();
+        return Phaser.Geom.Rectangle.Contains(bounds, pointer.worldX, pointer.worldY);
+    }
+
+    handleNpcPointerDown(pointer, _localX, _localY, event) {
+        this.pointerDownOnNpc = true;
+
+        if (this.dialogueUI.isOpen()) {
+            return;
+        }
+
+        this.tryOpenDialogue();
+
+        if (event && typeof event.stopPropagation === "function") {
+            event.stopPropagation();
+        }
+    }
+
+    handlePointerDown(pointer) {
+        if (this.dialogueUI.isOpen()) {
+            const stillOpen = this.dialogueUI.advance();
+            if (!stillOpen) {
+                this.player.setMovementEnabled(true);
+                this.onDialogueFinished();
+            }
+
+            return;
+        }
+
+        this.pointerDownTimestamp = this.time.now;
+        this.pointerDownOnNpc = this.isPointerOnNpc(pointer);
+
+        if (this.pointerDownOnNpc) {
+            this.tryOpenDialogue();
+            return;
+        }
+
+        this.activeMovePointer = pointer;
+    }
+
+    handlePointerMove(pointer) {
+        if (!this.activeMovePointer) {
+            return;
+        }
+
+        if (this.dialogueUI.isOpen()) {
+            return;
+        }
+
+        if (pointer.id === this.activeMovePointer.id && pointer.isDown) {
+            this.activeMovePointer = pointer;
+        }
+    }
+
+    handlePointerUp(pointer) {
+        const isCurrentMovePointer = this.activeMovePointer && pointer.id === this.activeMovePointer.id;
+
+        if (isCurrentMovePointer) {
+            this.activeMovePointer = null;
+            this.player.stopMovement();
+        }
+
+        if (this.dialogueUI.isOpen()) {
+            return;
+        }
+
+        const pressDuration = this.time.now - this.pointerDownTimestamp;
+        const isTapAttack =
+            pressDuration < this.tapAttackThresholdMs &&
+            !this.pointerDownOnNpc;
+
+        if (isTapAttack) {
+            this.performAttackIfReady();
+        }
     }
 
     createCamera() {
@@ -326,50 +430,6 @@ export default class BaseScene extends Phaser.Scene {
         this.takePlayerDamage(this.playerTouchDamage);
     }
 
-    getMergedMovementInput() {
-        const touchMoveState = this.touchControls ? this.touchControls.getMovementState() : null;
-
-        return {
-            left: { isDown: Boolean(this.cursors.left.isDown || touchMoveState?.left) },
-            right: { isDown: Boolean(this.cursors.right.isDown || touchMoveState?.right) },
-            up: { isDown: Boolean(this.cursors.up.isDown || touchMoveState?.up) },
-            down: { isDown: Boolean(this.cursors.down.isDown || touchMoveState?.down) },
-        };
-    }
-
-    handleDialogueInput() {
-        if (this.dialogueUI.isOpen()) {
-            const stillOpen = this.dialogueUI.advance();
-            if (!stillOpen) {
-                this.player.setMovementEnabled(true);
-                this.onDialogueFinished();
-            }
-            return;
-        }
-
-        const distanceToNpc = Phaser.Math.Distance.Between(
-            this.player.x,
-            this.player.y,
-            this.npc.x,
-            this.npc.y
-        );
-
-        if (distanceToNpc < 60 && this.dialogueUI.open()) {
-            this.player.setMovementEnabled(false);
-        }
-    }
-
-    handleAttackInput() {
-        if (this.dialogueUI.isOpen()) {
-            return;
-        }
-
-        if (this.time.now >= this.nextAttackTime) {
-            this.nextAttackTime = this.time.now + this.attackCooldown;
-            this.createAttackHitbox();
-        }
-    }
-
     createAttackHitbox() {
         if (this.attackHitbox) {
             this.attackHitbox.destroy();
@@ -487,18 +547,33 @@ export default class BaseScene extends Phaser.Scene {
     }
 
     update() {
-        const talkRequested = Phaser.Input.Keyboard.JustDown(this.spaceKey) || this.touchControls.consumeAction("talk");
-        const attackRequested = Phaser.Input.Keyboard.JustDown(this.attackKey) || this.touchControls.consumeAction("attack");
-
-        if (talkRequested) {
-            this.handleDialogueInput();
+        if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
+            if (this.dialogueUI.isOpen()) {
+                const stillOpen = this.dialogueUI.advance();
+                if (!stillOpen) {
+                    this.player.setMovementEnabled(true);
+                    this.onDialogueFinished();
+                    return;
+                }
+            } else {
+                this.tryOpenDialogue();
+            }
         }
 
-        if (attackRequested) {
-            this.handleAttackInput();
+        if (!this.dialogueUI.isOpen() && Phaser.Input.Keyboard.JustDown(this.attackKey)) {
+            this.performAttackIfReady();
         }
 
-        this.player.update(this.getMergedMovementInput());
+        if (!this.dialogueUI.isOpen() && this.activeMovePointer && this.activeMovePointer.isDown) {
+            this.player.moveToward(
+                this.activeMovePointer.worldX,
+                this.activeMovePointer.worldY,
+                this.touchStopDistance
+            );
+        } else if (!this.dialogueUI.isOpen()) {
+            this.player.update(this.cursors);
+        }
+
         this.updateSlimeBars();
         this.updatePlayerHud();
     }
