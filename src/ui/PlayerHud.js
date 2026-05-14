@@ -14,7 +14,6 @@ export default class PlayerHud {
         this.currentHp = 100;
         this.maxHp = 100;
         this.destroyed = false;
-        this.cameraZoom = 1;
 
         this.hpText = scene.add.text(this.marginX, this.textY, "HP: 100/100", {
             fontSize: "20px",
@@ -38,11 +37,6 @@ export default class PlayerHud {
         this.resizeUI(this.scene.scale.gameSize);
     }
 
-    setCameraZoom(zoom) {
-        this.cameraZoom = Math.max(0.0001, zoom || 1);
-        this.resizeUI(this.scene.scale.gameSize);
-    }
-
     setHp(currentHp, maxHp = this.maxHp) {
         this.currentHp = Math.max(0, currentHp);
         this.maxHp = Math.max(1, maxHp);
@@ -50,12 +44,7 @@ export default class PlayerHud {
     }
 
     resizeUI(_gameSize) {
-        const inverseZoom = 1 / this.cameraZoom;
-
-        this.hpText.setScale(inverseZoom);
-        this.hpBarBg.setScale(inverseZoom);
-        this.hpBarFill.setScale(inverseZoom);
-        this.hpText.setPosition(this.marginX * inverseZoom, this.textY * inverseZoom);
+        this.hpText.setPosition(this.marginX, this.textY);
         this.render();
     }
 

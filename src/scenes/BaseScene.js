@@ -1,8 +1,6 @@
 import Phaser from "../phaser.js";
 import Player from "../entities/Player.js";
 import Npc from "../entities/Npc.js";
-import DialogueUI from "../ui/DialogueUI.js";
-import PlayerHud from "../ui/PlayerHud.js";
 
 export default class BaseScene extends Phaser.Scene {
     constructor(sceneKey, sceneOptions = {}) {
@@ -41,11 +39,8 @@ export default class BaseScene extends Phaser.Scene {
 
         this.player = null;
         this.npc = null;
-        this.dialogueUI = null;
         this.slimes = [];
         this.attackHitbox = null;
-
-        this.playerHud = null;
 
         this.cursors = null;
         this.spaceKey = null;
@@ -75,8 +70,6 @@ export default class BaseScene extends Phaser.Scene {
         this.physics.world.setBounds(0, 0, this.mapWidth, this.mapHeight);
         this.createBackground();
         this.createActors();
-        this.createDialogueUI();
-        this.createPlayerHud();
         this.createSlimePack();
         this.createInput();
         this.createCamera();
@@ -86,6 +79,17 @@ export default class BaseScene extends Phaser.Scene {
         this.events.once("shutdown", this.handleSceneShutdown, this);
         this.events.once("destroy", this.handleSceneShutdown, this);
         this.onResize(this.scale.gameSize);
+
+        // 啟動 UI 疊加場景（已在執行中則忽略，場景切換後仍持續存在）
+        this.scene.launch("UIScene", {
+            initialHp: this.playerHp,
+            maxHp: this.maxPlayerHp,
+        });
+    }
+
+    /** 取得 UIScene 的參考，供各方法呼叫 UI 公開 API */
+    get uiScene() {
+        return this.scene.get("UIScene");
     }
 
     createBackground() {
@@ -173,17 +177,6 @@ export default class BaseScene extends Phaser.Scene {
         this.npc.on("pointerdown", this.handleNpcPointerDown, this);
     }
 
-    createDialogueUI() {
-        this.dialogueUI = new DialogueUI(this, {
-            x: 20,
-            y: this.scale.height - 160,
-            width: this.scale.width - 40,
-            height: 140,
-        });
-
-        this.dialogueUI.setDialogueData(this.sceneOptions.dialogueLines);
-    }
-
     createInput() {
         this.cursors = this.input.keyboard.createCursorKeys();
         this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
@@ -199,11 +192,12 @@ export default class BaseScene extends Phaser.Scene {
     }
 
     tryOpenDialogue() {
-        if (this.dialogueUI.isOpen()) {
+        const ui = this.uiScene;
+        if (ui.isDialogueOpen()) {
             return true;
         }
 
-        if (this.isPlayerNearNpc(60) && this.dialogueUI.open()) {
+        if (this.isPlayerNearNpc(60) && ui.openDialogue(this.sceneOptions.dialogueLines)) {
             this.player.setMovementEnabled(false);
             this.player.stopMovement();
             return true;
@@ -233,7 +227,7 @@ export default class BaseScene extends Phaser.Scene {
     handleNpcPointerDown(pointer, _localX, _localY, event) {
         this.pointerDownOnNpc = true;
 
-        if (this.dialogueUI.isOpen()) {
+        if (this.uiScene.isDialogueOpen()) {
             return;
         }
 
@@ -245,8 +239,9 @@ export default class BaseScene extends Phaser.Scene {
     }
 
     handlePointerDown(pointer) {
-        if (this.dialogueUI.isOpen()) {
-            const stillOpen = this.dialogueUI.advance();
+        const ui = this.uiScene;
+        if (ui.isDialogueOpen()) {
+            const stillOpen = ui.advanceDialogue();
             if (!stillOpen) {
                 this.player.setMovementEnabled(true);
                 this.onDialogueFinished();
@@ -271,7 +266,7 @@ export default class BaseScene extends Phaser.Scene {
             return;
         }
 
-        if (this.dialogueUI.isOpen()) {
+        if (this.uiScene.isDialogueOpen()) {
             return;
         }
 
@@ -288,7 +283,7 @@ export default class BaseScene extends Phaser.Scene {
             this.player.stopMovement();
         }
 
-        if (this.dialogueUI.isOpen()) {
+        if (this.uiScene.isDialogueOpen()) {
             return;
         }
 
@@ -325,35 +320,10 @@ export default class BaseScene extends Phaser.Scene {
         this.cameras.main.setSize(gameSize.width, gameSize.height);
         this.cameras.main.setZoom(this.cameraZoom);
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
-
-        if (this.dialogueUI) {
-            this.dialogueUI.setCameraZoom(this.cameraZoom);
-        }
-
-        if (this.playerHud) {
-            this.playerHud.setCameraZoom(this.cameraZoom);
-        }
     }
 
     handleSceneShutdown() {
         this.scale.off("resize", this.onResize, this);
-
-        if (this.playerHud) {
-            this.playerHud.destroy();
-            this.playerHud = null;
-        }
-    }
-
-    createPlayerHud() {
-        this.playerHud = new PlayerHud(this, {
-            x: 20,
-            textY: 16,
-            barY: 46,
-            barWidth: 220,
-            barHeight: 18,
-            depth: 2000,
-        });
-        this.updatePlayerHud();
     }
 
     createSlimePack() {
@@ -438,11 +408,7 @@ export default class BaseScene extends Phaser.Scene {
     }
 
     updatePlayerHud() {
-        if (!this.playerHud) {
-            return;
-        }
-
-        this.playerHud.setHp(this.playerHp, this.maxPlayerHp);
+        this.uiScene.setPlayerHp(this.playerHp, this.maxPlayerHp);
     }
 
     takePlayerDamage(amount) {
@@ -571,15 +537,20 @@ export default class BaseScene extends Phaser.Scene {
     }
 
     onDialogueFinished() {
+        // 換場景前確保 UIScene 對話框已關閉（UIScene 本身會持續存在）
+        this.uiScene.closeDialogue();
+
         if (this.sceneOptions.nextSceneKey) {
             this.scene.start(this.sceneOptions.nextSceneKey);
         }
     }
 
     update() {
+        const ui = this.uiScene;
+
         if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
-            if (this.dialogueUI.isOpen()) {
-                const stillOpen = this.dialogueUI.advance();
+            if (ui.isDialogueOpen()) {
+                const stillOpen = ui.advanceDialogue();
                 if (!stillOpen) {
                     this.player.setMovementEnabled(true);
                     this.onDialogueFinished();
@@ -590,17 +561,17 @@ export default class BaseScene extends Phaser.Scene {
             }
         }
 
-        if (!this.dialogueUI.isOpen() && Phaser.Input.Keyboard.JustDown(this.attackKey)) {
+        if (!ui.isDialogueOpen() && Phaser.Input.Keyboard.JustDown(this.attackKey)) {
             this.performAttackIfReady();
         }
 
-        if (!this.dialogueUI.isOpen() && this.activeMovePointer && this.activeMovePointer.isDown) {
+        if (!ui.isDialogueOpen() && this.activeMovePointer && this.activeMovePointer.isDown) {
             this.player.moveToward(
                 this.activeMovePointer.worldX,
                 this.activeMovePointer.worldY,
                 this.touchStopDistance
             );
-        } else if (!this.dialogueUI.isOpen()) {
+        } else if (!ui.isDialogueOpen()) {
             this.player.update(this.cursors);
         }
 

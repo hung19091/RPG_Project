@@ -1,6 +1,7 @@
 import Phaser from "./phaser.js";
 import GrassScene from "./scenes/GrassScene.js";
 import DesertScene from "./scenes/DesertScene.js";
+import UIScene from "./scenes/UIScene.js";
 
 const config = {
     type: Phaser.AUTO,
@@ -16,7 +17,9 @@ const config = {
             debug: false,
         },
     },
-    scene: [GrassScene, DesertScene],
+    // GrassScene 排第一，由 Phaser 自動啟動；
+    // UIScene 排最後，由 BaseScene 以 scene.launch() 呼叫，不會自動啟動。
+    scene: [GrassScene, DesertScene, UIScene],
 };
 
 new Phaser.Game(config);
