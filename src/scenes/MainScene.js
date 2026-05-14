@@ -1,7 +1,7 @@
 import GrassScene from "./GrassScene.js";
 
 // 相容舊匯入路徑：MainScene 現在直接沿用 GrassScene。
-export default class MainScene extends GrassScene {}
+export default class MainScene extends GrassScene { }
 
 /*
 

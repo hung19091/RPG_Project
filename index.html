@@ -1,34 +1,41 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Phaser 2D RPG Demo</title>
-    <style>
-      html,
-      body {
-        margin: 0;
-        padding: 0;
-        height: 100%;
-        background: #111;
-      }
 
-      body {
-        display: grid;
-        place-items: center;
-        font-family: Arial, sans-serif;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phaser 2D RPG Demo</title>
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #111;
+      overflow: hidden;
+      touch-action: none;
+      overscroll-behavior: none;
+    }
 
-      #game-container {
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-        border: 2px solid #2d2d2d;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="game-container"></div>
+    body {
+      font-family: Arial, sans-serif;
+    }
 
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
-    <script type="module" src="./game.js"></script>
-  </body>
+    #game-container {
+      width: 100vw;
+      height: 100vh;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      border: 2px solid #2d2d2d;
+      touch-action: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="game-container"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
+  <script type="module" src="./game.js"></script>
+</body>
+
 </html>

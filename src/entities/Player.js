@@ -1,145 +1,150 @@
 import Phaser from "../phaser.js";
 
 export default class Player extends Phaser.Physics.Arcade.Sprite {
-  static registerAnimations(scene, textureKey, frameWidth, frameHeight, animationPrefix = "player") {
-    if (!scene.textures.exists(textureKey)) {
-      return;
+    static registerAnimations(scene, textureKey, frameWidth, frameHeight, animationPrefix = "player") {
+        if (!scene.textures.exists(textureKey)) {
+            return;
+        }
+
+        const sourceImage = scene.textures.get(textureKey).getSourceImage();
+        const columns = Math.max(1, Math.floor(sourceImage.width / frameWidth));
+        const rows = Math.max(1, Math.floor(sourceImage.height / frameHeight));
+        const directionOrder = ["down", "left", "right", "up"];
+
+        const getRowIndex = (direction) => {
+            const directionIndex = directionOrder.indexOf(direction);
+            if (directionIndex < 0) {
+                return 0;
+            }
+
+            return Math.min(directionIndex, rows - 1);
+        };
+
+        const createAnimation = (key, startFrame, endFrame, frameRate, repeat) => {
+            if (scene.anims.exists(key)) {
+                return;
+            }
+
+            scene.anims.create({
+                key,
+                frames: scene.anims.generateFrameNumbers(textureKey, {
+                    start: startFrame,
+                    end: endFrame,
+                }),
+                frameRate,
+                repeat,
+            });
+        };
+
+        directionOrder.forEach((direction) => {
+            const rowIndex = getRowIndex(direction);
+            const rowStart = rowIndex * columns;
+            const rowEnd = rowStart + columns - 1;
+
+            createAnimation(`${animationPrefix}-walk-${direction}`, rowStart, rowEnd, 8, -1);
+            createAnimation(`${animationPrefix}-idle-${direction}`, rowStart, rowStart, 1, -1);
+        });
     }
 
-    const sourceImage = scene.textures.get(textureKey).getSourceImage();
-    const columns = Math.max(1, Math.floor(sourceImage.width / frameWidth));
-    const rows = Math.max(1, Math.floor(sourceImage.height / frameHeight));
-    const directionOrder = ["down", "left", "right", "up"];
+    constructor(scene, x, y, textureKey, options = {}) {
+        super(scene, x, y, textureKey, 0);
 
-    const getRowIndex = (direction) => {
-      const directionIndex = directionOrder.indexOf(direction);
-      if (directionIndex < 0) {
-        return 0;
-      }
+        scene.add.existing(this);
+        scene.physics.add.existing(this);
 
-      return Math.min(directionIndex, rows - 1);
-    };
+        this.moveSpeed = options.moveSpeed ?? 220;
+        this.animationPrefix = options.animationPrefix ?? "player";
+        this.hasAnimations = options.hasAnimations ?? false;
+        this.movementEnabled = true;
+        this.facing = options.facing ?? "down";
 
-    const createAnimation = (key, startFrame, endFrame, frameRate, repeat) => {
-      if (scene.anims.exists(key)) {
-        return;
-      }
+        this.setCollideWorldBounds(true);
 
-      scene.anims.create({
-        key,
-        frames: scene.anims.generateFrameNumbers(textureKey, {
-          start: startFrame,
-          end: endFrame,
-        }),
-        frameRate,
-        repeat,
-      });
-    };
-
-    directionOrder.forEach((direction) => {
-      const rowIndex = getRowIndex(direction);
-      const rowStart = rowIndex * columns;
-      const rowEnd = rowStart + columns - 1;
-
-      createAnimation(`${animationPrefix}-walk-${direction}`, rowStart, rowEnd, 8, -1);
-      createAnimation(`${animationPrefix}-idle-${direction}`, rowStart, rowStart, 1, -1);
-    });
-  }
-
-  constructor(scene, x, y, textureKey, options = {}) {
-    super(scene, x, y, textureKey, 0);
-
-    scene.add.existing(this);
-    scene.physics.add.existing(this);
-
-    this.moveSpeed = options.moveSpeed ?? 220;
-    this.animationPrefix = options.animationPrefix ?? "player";
-    this.hasAnimations = options.hasAnimations ?? false;
-    this.movementEnabled = true;
-    this.facing = options.facing ?? "down";
-
-    this.setCollideWorldBounds(true);
-
-    if (this.hasAnimations) {
-      this.play(`${this.animationPrefix}-idle-${this.facing}`);
-    }
-  }
-
-  setMovementEnabled(enabled) {
-    this.movementEnabled = enabled;
-
-    if (!enabled) {
-      this.body.setVelocity(0, 0);
-      this.playIdle();
-    }
-  }
-
-  getFacing() {
-    return this.facing;
-  }
-
-  playIdle() {
-    if (!this.hasAnimations) {
-      return;
+        if (this.hasAnimations) {
+            this.play(`${this.animationPrefix}-idle-${this.facing}`);
+        }
     }
 
-    this.anims.play(`${this.animationPrefix}-idle-${this.facing}`, true);
-  }
+    setMovementEnabled(enabled) {
+        this.movementEnabled = enabled;
 
-  playWalk(direction) {
-    if (!this.hasAnimations) {
-      return;
+        if (!enabled) {
+            this.body.setVelocity(0, 0);
+            this.playIdle();
+        }
     }
 
-    this.anims.play(`${this.animationPrefix}-walk-${direction}`, true);
-  }
-
-  update(cursors) {
-    if (!this.active) {
-      return;
+    getFacing() {
+        return this.facing;
     }
 
-    if (!this.movementEnabled) {
-      this.body.setVelocity(0, 0);
-      this.playIdle();
-      return;
+    playIdle() {
+        if (!this.hasAnimations) {
+            return;
+        }
+
+        this.anims.play(`${this.animationPrefix}-idle-${this.facing}`, true);
     }
 
-    let velocityX = 0;
-    let velocityY = 0;
+    playWalk(direction) {
+        if (!this.hasAnimations) {
+            return;
+        }
 
-    if (cursors.left.isDown) {
-      velocityX = -this.moveSpeed;
-    } else if (cursors.right.isDown) {
-      velocityX = this.moveSpeed;
+        this.anims.play(`${this.animationPrefix}-walk-${direction}`, true);
     }
 
-    if (cursors.up.isDown) {
-      velocityY = -this.moveSpeed;
-    } else if (cursors.down.isDown) {
-      velocityY = this.moveSpeed;
-    }
+    update(controls = {}) {
+        if (!this.active) {
+            return;
+        }
 
-    this.body.setVelocity(velocityX, velocityY);
+        if (!this.movementEnabled) {
+            this.body.setVelocity(0, 0);
+            this.playIdle();
+            return;
+        }
 
-    if (velocityX !== 0 && velocityY !== 0) {
-      this.body.velocity.normalize().scale(this.moveSpeed);
-    }
+        let velocityX = 0;
+        let velocityY = 0;
 
-    if (velocityX < 0) {
-      this.facing = "left";
-      this.playWalk("left");
-    } else if (velocityX > 0) {
-      this.facing = "right";
-      this.playWalk("right");
-    } else if (velocityY < 0) {
-      this.facing = "up";
-      this.playWalk("up");
-    } else if (velocityY > 0) {
-      this.facing = "down";
-      this.playWalk("down");
-    } else {
-      this.playIdle();
+        const leftPressed = Boolean(controls.left?.isDown);
+        const rightPressed = Boolean(controls.right?.isDown);
+        const upPressed = Boolean(controls.up?.isDown);
+        const downPressed = Boolean(controls.down?.isDown);
+
+        if (leftPressed) {
+            velocityX = -this.moveSpeed;
+        } else if (rightPressed) {
+            velocityX = this.moveSpeed;
+        }
+
+        if (upPressed) {
+            velocityY = -this.moveSpeed;
+        } else if (downPressed) {
+            velocityY = this.moveSpeed;
+        }
+
+        this.body.setVelocity(velocityX, velocityY);
+
+        if (velocityX !== 0 && velocityY !== 0) {
+            this.body.velocity.normalize().scale(this.moveSpeed);
+        }
+
+        if (velocityX < 0) {
+            this.facing = "left";
+            this.playWalk("left");
+        } else if (velocityX > 0) {
+            this.facing = "right";
+            this.playWalk("right");
+        } else if (velocityY < 0) {
+            this.facing = "up";
+            this.playWalk("up");
+        } else if (velocityY > 0) {
+            this.facing = "down";
+            this.playWalk("down");
+        } else {
+            this.playIdle();
+        }
     }
-  }
 }
