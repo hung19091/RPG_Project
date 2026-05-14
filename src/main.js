@@ -7,6 +7,8 @@ const config = {
     type: Phaser.AUTO,
     parent: "game-container",
     backgroundColor: "#000000",
+    // 使用裝置原生像素比渲染，防止高 DPI 手機上文字模糊
+    resolution: window.devicePixelRatio ?? 1,
     scale: {
         mode: Phaser.Scale.RESIZE,
         autoCenter: Phaser.Scale.CENTER_BOTH,

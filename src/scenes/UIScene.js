@@ -84,10 +84,11 @@ export default class UIScene extends Phaser.Scene {
             padding: { top: 4, bottom: 4 },
         });
 
+        const initialWrapW = Math.max(60, boxW - 108);
         this.dlgBody = this.add.text(96, 52, "", {
             fontSize: "20px",
             color: "#f5f5f5",
-            wordWrap: { width: boxW - 120 },
+            wordWrap: { width: initialWrapW, useAdvancedWrap: true },
             padding: { top: 4, bottom: 4 },
         });
 
@@ -126,9 +127,11 @@ export default class UIScene extends Phaser.Scene {
         // 對話框重新定位
         const boxW = Math.max(this.dlgMinWidth, width - this.dlgMarginX * 2);
         const boxY = height - this.dlgHeight - this.dlgMarginBottom;
+        // textX=96，右邊送 12px，所以有效文字寬 = boxW - 96 - 12
+        const wrapW = Math.max(60, boxW - 108);
         this.dlgContainer.setPosition(this.dlgMarginX, boxY);
         this.dlgBg.setSize(boxW, this.dlgHeight);
-        this.dlgBody.setWordWrapWidth(boxW - 120);
+        this.dlgBody.setWordWrapWidth(wrapW, true);
 
         // HUD 重新定位（固定左上角）
         this.hpText.setPosition(this.hudMarginX, this.hudTextY);
