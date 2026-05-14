@@ -6,6 +6,7 @@ export default class DialogueUI {
         this.lines = [];
         this.currentIndex = 0;
         this.visible = false;
+        this.cameraZoom = 1;
 
         this.marginX = options.x ?? 20;
         this.marginBottom = options.marginBottom ?? 20;
@@ -50,11 +51,18 @@ export default class DialogueUI {
         this.scene.events.once("destroy", this.destroy, this);
     }
 
+    setCameraZoom(zoom) {
+        this.cameraZoom = Math.max(0.0001, zoom || 1);
+        this.resizeUI(this.scene.scale.gameSize);
+    }
+
     resizeUI(gameSize) {
         const width = Math.max(this.minWidth, gameSize.width - this.marginX * 2);
         const uiY = gameSize.height - this.uiHeight - this.marginBottom;
+        const inverseZoom = 1 / this.cameraZoom;
 
-        this.container.setPosition(this.marginX, uiY);
+        this.container.setScale(inverseZoom);
+        this.container.setPosition(this.marginX * inverseZoom, uiY * inverseZoom);
         this.background.setSize(width, this.uiHeight);
         this.bodyText.setWordWrapWidth(width - 120);
     }

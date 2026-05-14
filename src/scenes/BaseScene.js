@@ -325,6 +325,14 @@ export default class BaseScene extends Phaser.Scene {
         this.cameras.main.setSize(gameSize.width, gameSize.height);
         this.cameras.main.setZoom(this.cameraZoom);
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+
+        if (this.dialogueUI) {
+            this.dialogueUI.setCameraZoom(this.cameraZoom);
+        }
+
+        if (this.playerHud) {
+            this.playerHud.setCameraZoom(this.cameraZoom);
+        }
     }
 
     handleSceneShutdown() {
