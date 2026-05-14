@@ -9,7 +9,8 @@ export default class DesertScene extends BaseScene {
             slimeCount: 3,
             usePlayerSprite: true,
             useNpcSprite: false,
-            cameraZoom: 2,
+            cameraZoomDesktop: 1,
+            cameraZoomMobile: 2.2,
             dialogueLines: desertDialogue,
         });
     }

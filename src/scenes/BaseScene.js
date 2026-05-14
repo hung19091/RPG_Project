@@ -2,6 +2,7 @@ import Phaser from "../phaser.js";
 import Player from "../entities/Player.js";
 import Npc from "../entities/Npc.js";
 import DialogueUI from "../ui/DialogueUI.js";
+import PlayerHud from "../ui/PlayerHud.js";
 
 export default class BaseScene extends Phaser.Scene {
     constructor(sceneKey, sceneOptions = {}) {
@@ -14,11 +15,13 @@ export default class BaseScene extends Phaser.Scene {
             slimeCount: 3,
             usePlayerSprite: true,
             useNpcSprite: false,
-            cameraZoom: 2,
+            cameraZoom: null,
+            cameraZoomDesktop: 1,
+            cameraZoomMobile: 2.2,
             ...sceneOptions,
         };
 
-        this.cameraZoom = this.sceneOptions.cameraZoom;
+        this.cameraZoom = this.sceneOptions.cameraZoomDesktop;
 
         this.mapWidth = 2000;
         this.mapHeight = 2000;
@@ -42,9 +45,7 @@ export default class BaseScene extends Phaser.Scene {
         this.slimes = [];
         this.attackHitbox = null;
 
-        this.playerHpText = null;
-        this.playerHpBarBg = null;
-        this.playerHpBarFill = null;
+        this.playerHud = null;
 
         this.cursors = null;
         this.spaceKey = null;
@@ -55,6 +56,7 @@ export default class BaseScene extends Phaser.Scene {
         this.pointerDownOnNpc = false;
         this.tapAttackThresholdMs = 200;
         this.touchStopDistance = 10;
+
     }
 
     preload() {
@@ -302,11 +304,24 @@ export default class BaseScene extends Phaser.Scene {
 
     createCamera() {
         this.cameras.main.setBounds(0, 0, this.mapWidth, this.mapHeight);
-        this.cameras.main.setZoom(this.cameraZoom);
-        this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+        this.onResize(this.scale.gameSize);
+    }
+
+    getAdaptiveCameraZoom(gameSize) {
+        if (typeof this.sceneOptions.cameraZoom === "number") {
+            return this.sceneOptions.cameraZoom;
+        }
+
+        const isDesktopMode = this.sys.game.device.os.desktop === true;
+        if (isDesktopMode) {
+            return this.sceneOptions.cameraZoomDesktop;
+        }
+
+        return this.sceneOptions.cameraZoomMobile;
     }
 
     onResize(gameSize) {
+        this.cameraZoom = this.getAdaptiveCameraZoom(gameSize);
         this.cameras.main.setSize(gameSize.width, gameSize.height);
         this.cameras.main.setZoom(this.cameraZoom);
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
@@ -314,24 +329,22 @@ export default class BaseScene extends Phaser.Scene {
 
     handleSceneShutdown() {
         this.scale.off("resize", this.onResize, this);
+
+        if (this.playerHud) {
+            this.playerHud.destroy();
+            this.playerHud = null;
+        }
     }
 
     createPlayerHud() {
-        this.playerHpText = this.add.text(20, 16, "HP: 100/100", {
-            fontSize: "20px",
-            color: "#ffffff",
-            fontStyle: "bold",
+        this.playerHud = new PlayerHud(this, {
+            x: 20,
+            textY: 16,
+            barY: 46,
+            barWidth: 220,
+            barHeight: 18,
+            depth: 2000,
         });
-        this.playerHpText.setScrollFactor(0);
-        this.playerHpText.setDepth(2000);
-
-        this.playerHpBarBg = this.add.graphics();
-        this.playerHpBarFill = this.add.graphics();
-        this.playerHpBarBg.setScrollFactor(0);
-        this.playerHpBarFill.setScrollFactor(0);
-        this.playerHpBarBg.setDepth(2000);
-        this.playerHpBarFill.setDepth(2001);
-
         this.updatePlayerHud();
     }
 
@@ -417,21 +430,11 @@ export default class BaseScene extends Phaser.Scene {
     }
 
     updatePlayerHud() {
-        const barX = 20;
-        const barY = 46;
-        const barWidth = 220;
-        const barHeight = 18;
-        const hpRatio = Phaser.Math.Clamp(this.playerHp / this.maxPlayerHp, 0, 1);
+        if (!this.playerHud) {
+            return;
+        }
 
-        this.playerHpText.setText(`HP: ${this.playerHp}/${this.maxPlayerHp}`);
-
-        this.playerHpBarBg.clear();
-        this.playerHpBarBg.fillStyle(0x000000, 0.75);
-        this.playerHpBarBg.fillRect(barX, barY, barWidth, barHeight);
-
-        this.playerHpBarFill.clear();
-        this.playerHpBarFill.fillStyle(0xe53935, 1);
-        this.playerHpBarFill.fillRect(barX + 2, barY + 2, (barWidth - 4) * hpRatio, barHeight - 4);
+        this.playerHud.setHp(this.playerHp, this.maxPlayerHp);
     }
 
     takePlayerDamage(amount) {
@@ -594,6 +597,5 @@ export default class BaseScene extends Phaser.Scene {
         }
 
         this.updateSlimeBars();
-        this.updatePlayerHud();
     }
 }

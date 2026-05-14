@@ -9,7 +9,8 @@ export default class GrassScene extends BaseScene {
             slimeCount: 3,
             usePlayerSprite: true,
             useNpcSprite: false,
-            cameraZoom: 6,
+            cameraZoomDesktop: 1,
+            cameraZoomMobile: 2.2,
             dialogueLines: grassDialogue,
         });
     }
