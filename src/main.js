@@ -7,6 +7,9 @@ const config = {
     type: Phaser.AUTO,
     parent: "game-container",
     backgroundColor: "#000000",
+    pixelArt: false,  // 關閉像素風模式，啟用抗鋸齒
+    antialias: true,  // 開啟反鋸齒，使文字清晰
+    resolution: window.devicePixelRatio || 1,  // 根據手機螢幕密度自動提升畫布解析度
     scale: {
         mode: Phaser.Scale.RESIZE,
         autoCenter: Phaser.Scale.CENTER_BOTH,
